@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PyroWatch AI | Forest Fire Probability & Wildfire Risk Assessment</title>
+  <meta name="description" content="AI-powered forest fire probability predictor and wildfire risk intelligence platform. Calculate ignition likelihood using real-time weather metrics and Canadian FWI indices.">
+  <meta name="keywords" content="forest fire probability, wildfire prediction, FWI index, fire risk calculator, temperature humidity fire risk">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css?v=3.0">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1" aria-hidden="true"></div>
+  <div class="ambient-glow glow-2" aria-hidden="true"></div>
+
+  <!-- Header Section -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon-wrapper" aria-hidden="true">
+          <span class="forest-tree-icon">🌲</span>
+          <span class="flame-icon">🔥</span>
+          <span class="flame-pulse"></span>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">PyroWatch <span class="accent-text">AI</span></h1>
+          <p class="brand-subtitle">Forest & Wildfire Fire Probability Intelligence System</p>
+        </div>
+      </div>
+
+      <div class="header-status-group">
+        <!-- Light / Dark Forest Mode Toggle -->
+        <button id="themeToggleBtn" class="btn-theme-toggle" title="Toggle Light / Dark Forest Mode" aria-label="Toggle theme">
+          <span class="theme-icon" id="themeIcon">☀️</span>
+          <span class="theme-text" id="themeLabel">Light Mode</span>
+        </button>
+
+        <div class="engine-badge" id="engineStatusBadge">
+          <span class="status-dot"></span>
+          <span class="engine-text">FWI-ML Ensemble: Ready</span>
+        </div>
+        <button id="quickPresetTrigger" class="btn-preset-toggle" title="Load sample scenarios">
+          <span>⚡ Presets</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Quick Scenario Presets Bar -->
+  <section class="presets-bar" id="presetsBar" aria-label="Scenario Presets">
+    <div class="presets-container">
+      <span class="presets-label">Quick Scenarios:</span>
+      <button class="preset-pill active" data-preset="heatwave" id="presetHeatwave">
+        ☀️ Extreme Heatwave
+      </button>
+      <button class="preset-pill" data-preset="arid-windy" id="presetAridWindy">
+        💨 Dry & High Winds
+      </button>
+      <button class="preset-pill" data-preset="moderate" id="presetModerate">
+        🌲 Typical Summer Forest
+      </button>
+      <button class="preset-pill" data-preset="rainy" id="presetRainy">
+        🌧️ Recent Rain & Humid
+      </button>
+      <button class="preset-pill" data-preset="drought" id="presetDrought">
+        🍂 Prolonged Drought
+      </button>
+    </div>
+  </section>
+
+  <!-- Main Content Layout -->
+  <main class="main-layout">
+    
+    <!-- LEFT PANEL: Data Input Console -->
+    <section class="input-panel card-glass" aria-labelledby="inputSectionTitle">
+      <div class="panel-header">
+        <div>
+          <h2 id="inputSectionTitle" class="section-title">
+            <span class="step-num">1</span> Push / Enter Forest Conditions
+          </h2>
+          <p class="section-desc">Adjust environmental variables or technical fire weather indices.</p>
+        </div>
+
+        <!-- Mode Toggle -->
+        <div class="mode-switch-wrapper" role="radiogroup" aria-label="Input Mode Switch">
+          <button id="modeIntuitiveBtn" class="mode-tab active" role="radio" aria-checked="true">
+            🌤️ Weather Mode
+          </button>
+          <button id="modeAdvancedBtn" class="mode-tab" role="radio" aria-checked="false">
+            📐 FWI Advanced
+          </button>
+        </div>
+      </div>
+
+      <!-- INTUITIVE WEATHER MODE FORM -->
+      <form id="firePredictorForm" class="predictor-form" novalidate>
+        
+        <div id="intuitiveFields" class="fields-container">
+          
+          <!-- Forest / Ecosystem Type -->
+          <div class="form-group full-width">
+            <div class="label-row">
+              <label for="forestType">Forest Canopy / Vegetation Type</label>
+              <span class="field-hint" id="forestTypeHint">Combustion factor: 1.1x</span>
+            </div>
+            <select id="forestType" class="custom-select">
+              <option value="coniferous" selected>Coniferous / Pine Forest (Resinous, Fast Ignition)</option>
+              <option value="deciduous">Deciduous / Broadleaf Hardwoods (Moderate Resistance)</option>
+              <option value="mixed">Mixed Forest (Conifer & Broadleaf Mosaic)</option>
+              <option value="shrubland">Chaparral / Shrubland (High Surface Spread)</option>
+              <option value="grassland">Grassland / Savannah (Rapid Flash Fuels)</option>
+            </select>
+          </div>
+
+          <!-- Temperature (°C) -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="tempInput">Ambient Temperature</label>
+              <span class="metric-badge" id="tempBadge">36.5 °C</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="tempSlider" min="0" max="50" step="0.5" value="36.5" aria-label="Temperature slider">
+              <input type="number" id="tempInput" min="0" max="50" step="0.5" value="36.5" class="num-box">
+              <span class="unit-label">°C</span>
+            </div>
+            <span class="field-meta">High temperatures accelerate fuel desiccation</span>
+          </div>
+
+          <!-- Relative Humidity (%) -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="humidityInput">Relative Humidity (RH)</label>
+              <span class="metric-badge" id="humidityBadge">22 %</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="humiditySlider" min="5" max="100" step="1" value="22" aria-label="Relative Humidity slider">
+              <input type="number" id="humidityInput" min="5" max="100" step="1" value="22" class="num-box">
+              <span class="unit-label">%</span>
+            </div>
+            <span class="field-meta">Below 30% = critical combustion threshold</span>
+          </div>
+
+          <!-- Wind Speed (km/h) -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="windInput">Wind Velocity</label>
+              <span class="metric-badge" id="windBadge">32 km/h</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="windSlider" min="0" max="90" step="1" value="32" aria-label="Wind speed slider">
+              <input type="number" id="windInput" min="0" max="90" step="1" value="32" class="num-box">
+              <span class="unit-label">km/h</span>
+            </div>
+            <span class="field-meta">Drives oxygen supply & ember spotting</span>
+          </div>
+
+          <!-- 24h Rainfall (mm) -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="rainInput">Rainfall (Last 24 Hours)</label>
+              <span class="metric-badge" id="rainBadge">0.0 mm</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="rainSlider" min="0" max="40" step="0.2" value="0.0" aria-label="Rainfall slider">
+              <input type="number" id="rainInput" min="0" max="40" step="0.2" value="0.0" class="num-box">
+              <span class="unit-label">mm</span>
+            </div>
+            <span class="field-meta">Rain dampens top organic layer</span>
+          </div>
+
+          <!-- Drought / Fuel Dryness Level -->
+          <div class="form-group full-width">
+            <div class="label-row">
+              <label for="droughtLevel">Soil / Fuel Moisture Status</label>
+              <span class="metric-badge" id="droughtBadge">Severely Parched</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="droughtSlider" min="1" max="5" step="1" value="4" aria-label="Drought severity slider">
+              <span class="slider-endpoints"><span>1 (Saturated)</span><span>5 (Tinderbox)</span></span>
+            </div>
+            <span class="field-meta">Deep organic duff dryness & prolonged drought duration</span>
+          </div>
+
+        </div>
+
+        <!-- ADVANCED FWI INDICES MODE FORM (Canadian Forest Fire Weather Index) -->
+        <div id="advancedFields" class="fields-container hidden">
+          <div class="advanced-info-banner">
+            <span>🔬 <strong>Canadian FWI System:</strong> Direct input of standard meteorological sub-indices.</span>
+          </div>
+
+          <!-- FFMC -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="ffmcInput">FFMC (Fine Fuel Moisture Code)</label>
+              <span class="metric-badge" id="ffmcBadge">91.5</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="ffmcSlider" min="20" max="99" step="0.5" value="91.5">
+              <input type="number" id="ffmcInput" min="20" max="99" step="0.5" value="91.5" class="num-box">
+            </div>
+            <span class="field-meta">Ignition potential of surface litter (Range 0-101)</span>
+          </div>
+
+          <!-- DMC -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="dmcInput">DMC (Duff Moisture Code)</label>
+              <span class="metric-badge" id="dmcBadge">48.0</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="dmcSlider" min="1" max="150" step="1" value="48.0">
+              <input type="number" id="dmcInput" min="1" max="150" step="1" value="48.0" class="num-box">
+            </div>
+            <span class="field-meta">Moisture in moderate depth organic layers</span>
+          </div>
+
+          <!-- DC -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="dcInput">DC (Drought Code)</label>
+              <span class="metric-badge" id="dcBadge">350.0</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="dcSlider" min="10" max="800" step="5" value="350.0">
+              <input type="number" id="dcInput" min="10" max="800" step="5" value="350.0" class="num-box">
+            </div>
+            <span class="field-meta">Deep soil layer dryness / seasonal drought</span>
+          </div>
+
+          <!-- ISI -->
+          <div class="form-group">
+            <div class="label-row">
+              <label for="isiInput">ISI (Initial Spread Index)</label>
+              <span class="metric-badge" id="isiBadge">14.2</span>
+            </div>
+            <div class="slider-row">
+              <input type="range" id="isiSlider" min="0" max="40" step="0.5" value="14.2">
+              <input type="number" id="isiInput" min="0" max="40" step="0.5" value="14.2" class="num-box">
+            </div>
+            <span class="field-meta">Expected rate of fire spread without fuel load</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="form-actions">
+          <button type="button" id="computeBtn" class="btn-primary">
+            <span class="btn-icon">⚡</span>
+            <span>Compute Fire Probability</span>
+          </button>
+          
+          <button type="button" id="saveHistoryBtn" class="btn-secondary" title="Save this scenario to history log">
+            <span>💾 Save to Log</span>
+          </button>
+        </div>
+
+        <!-- Realtime toggle -->
+        <div class="auto-update-toggle">
+          <label class="switch">
+            <input type="checkbox" id="realtimeToggle" checked>
+            <span class="slider-switch round"></span>
+          </label>
+          <span class="switch-label">Instant Live Update on Slider Move</span>
+        </div>
+
+      </form>
+
+      <!-- CSV Bulk Upload Section -->
+      <div class="csv-upload-section">
+        <div class="csv-divider">
+          <span>OR EVALUATE BULK DATA</span>
+        </div>
+
+        <div class="csv-drop-area" id="csvDropZone">
+          <input type="file" id="csvFileInput" accept=".csv" class="file-input-hidden">
+          <div class="drop-content">
+            <span class="drop-icon">📁</span>
+            <p class="drop-text"><strong>Click to upload</strong> or drag & drop CSV file</p>
+            <span class="drop-subtext">Columns: temp, humidity, wind, rain, drought</span>
+          </div>
+        </div>
+
+        <div class="csv-actions-row">
+          <button id="downloadSampleCsvBtn" class="btn-link">
+            📥 Download Sample Forest CSV
+          </button>
+          <span id="csvFileStatus" class="csv-status-text">No file loaded</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- RIGHT PANEL: Fire Probability & Risk Analytics -->
+    <section class="results-panel card-glass" aria-labelledby="resultsSectionTitle">
+      <div class="panel-header">
+        <div>
+          <h2 id="resultsSectionTitle" class="section-title">
+            <span class="step-num">2</span> Fire Probability & Threat Analytics
+          </h2>
+          <p class="section-desc">Real-time probabilistic engine prediction based on atmospheric variables.</p>
+        </div>
+        <div class="timestamp-badge" id="calcTimestamp">
+          Updated: Just now
+        </div>
+      </div>
+
+      <!-- Main Gauge Card -->
+      <div class="gauge-card">
+        <div class="gauge-wrapper">
+          <!-- Gauge Dial Stage -->
+          <div class="gauge-dial-container">
+            <svg class="gauge-svg" viewBox="0 0 280 162" id="riskGaugeSvg">
+              <!-- Scale labels -->
+              <text x="32" y="158" class="gauge-scale-label" text-anchor="middle">0%</text>
+              <text x="140" y="16" class="gauge-scale-label" text-anchor="middle">50%</text>
+              <text x="248" y="158" class="gauge-scale-label" text-anchor="middle">100%</text>
+
+              <!-- Background Arc -->
+              <path class="gauge-bg" d="M 32 140 A 108 108 0 0 1 248 140" />
+              <!-- Gradient Progress Arc -->
+              <path class="gauge-fill" id="gaugeProgressArc" d="M 32 140 A 108 108 0 0 1 248 140" />
+              <!-- Needle pointer -->
+              <g id="gaugeNeedleGroup" transform="translate(140, 140) rotate(-90)">
+                <line x1="0" y1="0" x2="0" y2="-90" class="gauge-needle" />
+                <circle cx="0" cy="0" r="10" class="gauge-needle-center" id="gaugeNeedleCenter" />
+                <circle cx="0" cy="0" r="4.5" class="gauge-needle-inner" />
+              </g>
+            </svg>
+          </div>
+
+          <!-- Digital readout placed cleanly below the gauge dial -->
+          <div class="gauge-readout">
+            <div class="probability-display">
+              <span id="probValueDisplay" class="prob-num">87.4</span>
+              <span class="prob-unit">%</span>
+            </div>
+            <span class="prob-label">FIRE CATCH PROBABILITY</span>
+          </div>
+        </div>
+
+        <!-- Danger Status Badge -->
+        <div class="threat-badge-container">
+          <div id="threatLevelBadge" class="threat-badge threat-extreme">
+            <span class="threat-beacon"></span>
+            <span id="threatLevelText" class="threat-title">EXTREME FIRE DANGER</span>
+          </div>
+          <p id="threatSummaryText" class="threat-summary">
+            Explosive ignition potential. Fires will spread vigorously through crown and surface fuel. Immediate containment unlikely without heavy air support.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Diagnostic Metrics Grid -->
+      <div class="metrics-grid">
+        
+        <div class="metric-card">
+          <div class="metric-icon">🔥</div>
+          <div class="metric-info">
+            <span class="metric-title">FWI Index</span>
+            <span class="metric-val" id="metricFwiVal">38.6</span>
+            <span class="metric-sub" id="metricFwiDesc">Very High Danger</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon">⚡</div>
+          <div class="metric-info">
+            <span class="metric-title">Spread Index (ISI)</span>
+            <span class="metric-val" id="metricIsiVal">18.4</span>
+            <span class="metric-sub">Rapid surface run</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon">💧</div>
+          <div class="metric-info">
+            <span class="metric-title">Fuel Moisture</span>
+            <span class="metric-val" id="metricMoistureVal">6.2%</span>
+            <span class="metric-sub">Dangerously Dry</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-icon">🏃</div>
+          <div class="metric-info">
+            <span class="metric-title">Est. Spread Velocity</span>
+            <span class="metric-val" id="metricVelocityVal">24 m/min</span>
+            <span class="metric-sub">High perimeter growth</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Risk Factors Breakdown Bars -->
+      <div class="breakdown-card">
+        <h3 class="breakdown-title">Critical Factor Contribution</h3>
+        
+        <div class="factor-row">
+          <div class="factor-header">
+            <span>Thermal Desiccation (Temperature)</span>
+            <span id="factorTempText">38% Impact</span>
+          </div>
+          <div class="factor-bar-bg">
+            <div id="factorTempBar" class="factor-bar-fill fill-temp" style="width: 82%;"></div>
+          </div>
+        </div>
+
+        <div class="factor-row">
+          <div class="factor-header">
+            <span>Atmospheric Aridity (Low Humidity)</span>
+            <span id="factorHumidityText">35% Impact</span>
+          </div>
+          <div class="factor-bar-bg">
+            <div id="factorHumidityBar" class="factor-bar-fill fill-humidity" style="width: 78%;"></div>
+          </div>
+        </div>
+
+        <div class="factor-row">
+          <div class="factor-header">
+            <span>Oxygen & Convection (Wind)</span>
+            <span id="factorWindText">24% Impact</span>
+          </div>
+          <div class="factor-bar-bg">
+            <div id="factorWindBar" class="factor-bar-fill fill-wind" style="width: 60%;"></div>
+          </div>
+        </div>
+
+        <div class="factor-row">
+          <div class="factor-header">
+            <span>Precipitation Suppression (Rain)</span>
+            <span id="factorRainText">0% Dampening</span>
+          </div>
+          <div class="factor-bar-bg">
+            <div id="factorRainBar" class="factor-bar-fill fill-rain" style="width: 0%;"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Actionable Emergency & Prevention Advisory -->
+      <div class="advisory-card" id="advisoryCard">
+        <div class="advisory-header">
+          <span class="advisory-icon" id="advisoryIcon">🚨</span>
+          <h3 class="advisory-title" id="advisoryTitle">Mandatory Wildfire Preparedness Advisory</h3>
+        </div>
+        <ul class="advisory-list" id="advisoryList">
+          <li><strong>Total Fire Ban:</strong> Strictly prohibit open campfires, debris burning, and spark-producing machinery.</li>
+          <li><strong>Patrol Escalation:</strong> Deploy continuous aerial and ground drone surveillance along perimeter sectors.</li>
+          <li><strong>Suppression Pre-positioning:</strong> Water tenders and strike teams should be staged at high-risk wildland-urban interfaces.</li>
+          <li><strong>Evacuation Alert:</strong> High readiness for immediate community alerts if spot fires ignite.</li>
+        </ul>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- CSV Batch Results Modal / Drawer -->
+  <section id="batchResultsModal" class="batch-modal hidden" aria-labelledby="batchModalTitle">
+    <div class="batch-modal-content card-glass">
+      <div class="batch-modal-header">
+        <div>
+          <h2 id="batchModalTitle" class="section-title">📊 Bulk CSV Fire Probability Analysis</h2>
+          <p id="batchSummaryStats" class="section-desc">Analyzed 0 forest records</p>
+        </div>
+        <button id="closeBatchModalBtn" class="btn-close-modal" aria-label="Close modal">✕</button>
+      </div>
+
+      <div class="batch-table-wrapper">
+        <table class="batch-table" id="batchTable">
+          <thead>
+            <tr>
+              <th>Row #</th>
+              <th>Forest Type</th>
+              <th>Temp (°C)</th>
+              <th>Humidity (%)</th>
+              <th>Wind (km/h)</th>
+              <th>Rain (mm)</th>
+              <th>Fire Probability</th>
+              <th>Danger Level</th>
+              <th>Primary Hazard</th>
+            </tr>
+          </thead>
+          <tbody id="batchTableBody">
+            <!-- Dynamically populated from CSV -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="batch-modal-footer">
+        <button id="exportBatchCsvBtn" class="btn-primary">
+          📥 Export Evaluated CSV with Predictions
+        </button>
+        <button id="dismissBatchModalBtn" class="btn-secondary">
+          Close Preview
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- BOTTOM SECTION: Evaluation History Log -->
+  <section class="history-section card-glass" aria-labelledby="historyTitle">
+    <div class="panel-header">
+      <div>
+        <h2 id="historyTitle" class="section-title">
+          📜 Evaluation History & Logged Tests
+        </h2>
+        <p class="section-desc">Track and compare multiple scenarios evaluated during this session.</p>
+      </div>
+
+      <div class="history-actions">
+        <button id="exportHistoryBtn" class="btn-secondary btn-sm">
+          📥 Export Log (CSV)
+        </button>
+        <button id="clearHistoryBtn" class="btn-danger-outline btn-sm">
+          🗑️ Clear Log
+        </button>
+      </div>
+    </div>
+
+    <div class="history-table-wrapper">
+      <table class="history-table" id="historyTable">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Vegetation</th>
+            <th>Temp (°C)</th>
+            <th>RH (%)</th>
+            <th>Wind (km/h)</th>
+            <th>Rain (mm)</th>
+            <th>Drought</th>
+            <th>Fire Prob %</th>
+            <th>Threat Level</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="historyTableBody">
+          <!-- Populated dynamically via JS -->
+        </tbody>
+      </table>
+      <div id="emptyHistoryMsg" class="empty-state">
+        <span>No saved evaluations yet. Click <strong>"Save to Log"</strong> or run a prediction to record entries.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <p>PyroWatch AI &copy; 2026. Scientific Wildfire Prediction Engine combining Canadian Forest Fire Weather Index (FWI) & Multi-Factor Logistic Risk Modeling.</p>
+  </footer>
+
+  <!-- Core JavaScript -->
+  <script src="app.js?v=3.0"></script>
+</body>
+</html>
