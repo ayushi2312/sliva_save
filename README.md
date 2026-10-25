@@ -1,6 +1,6 @@
-# 🔥 PyroWatch AI - Forest Fire Probability & Wildfire Risk Assessment
+# 🔥 Sliva Save - Forest Fire Prevention System
 
-An advanced, interactive web application designed to compute and display the **probability of catching fire in a forest** based on environmental weather conditions or Canadian Forest Fire Weather Index (FWI) parameters.
+An interactive educational demo. Weather Mode shows an unvalidated relative score from temperature, humidity, and vegetation; Advanced Mode calculates the standard Buildup Index (BUI) and Fire Weather Index (FWI) from user-supplied FWI codes. It does not predict calibrated fire probabilities.
 
 ---
 
@@ -12,24 +12,24 @@ An advanced, interactive web application designed to compute and display the **p
    - 1-click theme toggle in the header with persistent memory via `localStorage`.
 
 2. **Dual Input Systems**:
-   - **🌤️ Weather Mode (Intuitive)**: Temperature (°C), Relative Humidity (%), Wind Velocity (km/h), 24h Rainfall (mm), Soil & Vegetation Drought Severity (1-5), and Forest Canopy Type (Coniferous, Deciduous, Mixed, Chaparral, Grassland).
+   - **🌤️ Weather Mode (Intuitive)**: Temperature (°C), Relative Humidity (%), and Forest Canopy Type (Coniferous, Deciduous, Mixed, Chaparral, Grassland).
    - **📐 Canadian FWI Advanced Mode**: Fine Fuel Moisture Code (FFMC), Duff Moisture Code (DMC), Drought Code (DC), and Initial Spread Index (ISI).
 
-2. **Real-Time Probability Analytics**:
-   - **Animated SVG Dial Gauge** dynamically tracking 0% to 100% wildfire catch likelihood.
-   - **Categorical Danger Classification**: Low (Green), Moderate (Amber), High (Orange), and Extreme / Critical Danger (Ember Crimson).
-   - **Diagnostic Metrics**: Derived composite FWI, Initial Spread Velocity (m/min), estimated Fuel Moisture %, and Initial Spread Index (ISI).
-   - **Critical Factor Contribution**: Relative breakdown of how much Temperature, Aridity, Wind, and Rain suppress or accelerate danger.
+2. **Real-Time Illustrative Scoring**:
+   - Animated 0–100 gauge for a heuristic, uncalibrated score (not a probability).
+   - App-defined qualitative score bands; these are not official danger classes.
+   - Advanced Mode calculates BUI and FWI from supplied FFMC, DMC, DC, and ISI values.
+   - Weather Mode does not fabricate FWI, fuel moisture, or spread-rate outputs when necessary inputs are missing.
 
 3. **Scenario Presets**:
-   - 1-click loading of realistic weather conditions: *Extreme Heatwave*, *Dry & High Winds*, *Typical Summer Forest*, *Recent Rain & Humid*, and *Prolonged Drought*.
+   - One-click example conditions: *Extreme Heatwave*, *Hot & Dry Conditions*, *Typical Summer Forest*, *Cool & Humid Conditions*, and *Hot, Dry Forest*.
 
-4. **Actionable Prevention & Emergency Protocols**:
-   - Automatically adapts recommended protocols (e.g. Total fire ban, air tanker staging, mandatory lookout flights, hot work bans) based on the calculated risk level.
+4. **Interpretation Notice**:
+   - Advises users to consult relevant fire authorities and validated local fire-danger information for real-world decisions.
 
 5. **Bulk CSV Evaluation**:
-   - Drag & drop or upload any CSV file to calculate fire probability across dozens or hundreds of forest parcels at once.
-   - Preview evaluated rows and export the annotated dataset with fire danger ratings.
+   - Drag & drop or upload a CSV to calculate illustrative scores for multiple records.
+   - Preview evaluated rows and export the scores.
    - Pre-bundled with `sample_forest_data.csv`.
 
 6. **Persistent History Log**:
@@ -57,15 +57,15 @@ Then visit: `http://localhost:3000`
 
 ---
 
-## 🔬 How Fire Probability is Calculated
+## Calculation scope and limitations
 
-The engine combines standard **Canadian Forest Fire Weather Index (FWI)** equations with a calibrated multi-variable logistic ensemble:
+Weather Mode calculates a **heuristic 0–100 score**, not a fire probability. Its coefficients and vegetation multipliers are not calibrated or validated against observed fire events. Since wind, rainfall, prior-day codes, and seasonal inputs are not collected in this mode, it does not calculate FWI metrics.
 
-$$P(\text{Fire}) = \frac{1}{1 + e^{-z}}$$
+Advanced Mode computes BUI and FWI from supplied FFMC, DMC, DC, and ISI using the standard piecewise transformations. The accuracy of those outputs depends on the supplied codes being valid and consistently calculated. The app does not generate daily FFMC, DMC, or DC from weather history.
 
-Where $z$ is the log-odds of ignition:
-$$z = \beta_0 + \beta_1(T - 20) + \beta_2(55 - RH) + \beta_3(W - 12) - \beta_4 \ln(1 + R) + \beta_5(D - 2.5)$$
-Scaled by canopy flammability factors:
+Score bands are app-defined and not official danger thresholds. This educational application is not an operational forecast and must not be used for fire-management or public-safety decisions. Consult validated local sources and authorities.
+
+Weather Mode uses canopy multipliers as heuristic score weights:
 - **Chaparral / Shrubland**: 1.25x
 - **Coniferous / Pine**: 1.18x
 - **Grassland**: 1.15x
@@ -74,4 +74,4 @@ Scaled by canopy flammability factors:
 
 ---
 
-*Developed for wildfire research, forestry management, and environmental monitoring.*
+*Educational demonstration only.*

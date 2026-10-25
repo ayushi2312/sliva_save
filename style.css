@@ -7,7 +7,8 @@
      DARK FOREST THEME (Default)
      ========================================================================= */
   --bg-dark: #07130e;
-  --bg-gradient: radial-gradient(circle at 50% 0%, #0d281e 0%, #071710 65%, #040d09 100%);
+  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(13, 40, 30, 0.18) 0%, rgba(7, 23, 16, 0.24) 65%, rgba(4, 13, 9, 0.30) 100%);
+  --bg-image-overlay: linear-gradient(rgba(4, 13, 9, 0.14), rgba(4, 13, 9, 0.24));
   --surface-glass: rgba(14, 30, 23, 0.76);
   --surface-glass-border: rgba(52, 211, 153, 0.14);
   --surface-glass-hover: rgba(20, 42, 33, 0.9);
@@ -71,7 +72,8 @@
    ========================================================================= */
 body.light-theme {
   --bg-dark: #f2f8f4;
-  --bg-gradient: radial-gradient(circle at 50% 0%, #e2f3e8 0%, #ebf5ee 55%, #def0e6 100%);
+  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(226, 243, 232, 0.18) 0%, rgba(235, 245, 238, 0.24) 55%, rgba(222, 240, 230, 0.30) 100%);
+  --bg-image-overlay: linear-gradient(rgba(242, 248, 244, 0.20), rgba(242, 248, 244, 0.30));
   --surface-glass: rgba(255, 255, 255, 0.88);
   --surface-glass-border: rgba(16, 185, 129, 0.25);
   --surface-glass-hover: rgba(255, 255, 255, 0.98);
@@ -109,7 +111,13 @@ body.light-theme {
 body {
   font-family: var(--font-body);
   background-color: var(--bg-dark);
-  background-image: var(--bg-gradient);
+  background-image:
+    var(--bg-image-overlay),
+    var(--bg-gradient),
+    url('https://i.pinimg.com/originals/bc/18/29/bc1829a752b009b46e904260da235715.jpg');
+  background-size: cover, cover, cover;
+  background-position: center, center top, center;
+  background-repeat: no-repeat;
   background-attachment: fixed;
   color: var(--text-main);
   min-height: 100vh;

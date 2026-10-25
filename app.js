@@ -1,7 +1,7 @@
 /**
- * PyroWatch AI - Forest Fire Probability & Wildfire Risk Assessment Engine
+ * Sliva Save - Forest Fire Prevention System
  * Incorporates Canadian Forest Fire Weather Index (FWI) principles and
- * multi-variable logistic regression ensemble for probability estimation.
+ * illustrative relative-risk scoring and Canadian FWI calculations.
  */
 
 // ============================================================================
@@ -21,9 +21,6 @@ const SCENARIO_PRESETS = {
     name: 'Extreme Heatwave',
     temp: 42.0,
     humidity: 14,
-    wind: 38,
-    rain: 0.0,
-    drought: 5,
     forestType: 'coniferous',
     ffmc: 94.2,
     dmc: 72.0,
@@ -31,12 +28,9 @@ const SCENARIO_PRESETS = {
     isi: 22.5
   },
   'arid-windy': {
-    name: 'Dry & High Winds',
+    name: 'Hot & Dry Conditions',
     temp: 34.0,
     humidity: 22,
-    wind: 56,
-    rain: 0.0,
-    drought: 4,
     forestType: 'shrubland',
     ffmc: 92.0,
     dmc: 58.0,
@@ -47,9 +41,6 @@ const SCENARIO_PRESETS = {
     name: 'Typical Summer Forest',
     temp: 26.5,
     humidity: 48,
-    wind: 16,
-    rain: 0.8,
-    drought: 3,
     forestType: 'mixed',
     ffmc: 84.0,
     dmc: 28.0,
@@ -57,12 +48,9 @@ const SCENARIO_PRESETS = {
     isi: 6.2
   },
   rainy: {
-    name: 'Recent Rain & Humid',
+    name: 'Cool & Humid Conditions',
     temp: 17.5,
     humidity: 86,
-    wind: 12,
-    rain: 18.5,
-    drought: 1,
     forestType: 'deciduous',
     ffmc: 45.0,
     dmc: 8.0,
@@ -73,23 +61,12 @@ const SCENARIO_PRESETS = {
     name: 'Prolonged Drought',
     temp: 37.0,
     humidity: 19,
-    wind: 24,
-    rain: 0.0,
-    drought: 5,
     forestType: 'coniferous',
     ffmc: 93.0,
     dmc: 88.0,
     dc: 680.0,
     isi: 15.4
   }
-};
-
-const DROUGHT_LABELS = {
-  1: 'Saturated (High Moisture)',
-  2: 'Normal Moisture',
-  3: 'Moderate Dryness',
-  4: 'Severely Parched',
-  5: 'Critical Tinderbox (Drought)'
 };
 
 // ============================================================================
@@ -99,100 +76,34 @@ const DROUGHT_LABELS = {
 class ForestFirePredictor {
 
   /**
-   * Approximate Fine Fuel Moisture Code (FFMC) from weather variables.
-   * Based on standard empirical FWI approximations.
+  * Illustrative relative score from limited weather inputs.
    */
-  static estimateFFMC(temp, rh, wind, rain) {
-    let ffmc0 = 85.0; // standard baseline
-    // Rain reduction
-    let rf = rain > 0.5 ? Math.min(rain, 25) : 0;
-    let rainDamp = rf > 0 ? (1.5 * Math.log(1 + rf) * 12) : 0;
-    
-    // Thermal & humidity drying
-    let tempEffect = (temp - 20) * 0.45;
-    let rhEffect = (50 - rh) * 0.42;
-    let windEffect = (wind - 15) * 0.15;
-    
-    let ffmc = ffmc0 + tempEffect + rhEffect + windEffect - rainDamp;
-    return Math.min(99.0, Math.max(10.0, ffmc));
-  }
-
-  /**
-   * Approximate Initial Spread Index (ISI) from FFMC and Wind
-   */
-  static estimateISI(ffmc, wind) {
-    let fm = 147.2 * (101.0 - ffmc) / (59.5 + ffmc); // Fuel moisture approx
-    let fW = Math.exp(0.05039 * wind);
-    let fF = 91.9 * Math.exp(-0.1386 * fm) * (1.0 + Math.pow(fm, 5.31) / (4.93e7));
-    let isi = 0.208 * fW * fF;
-    return Math.min(60.0, Math.max(0.1, isi));
-  }
-
-  /**
-   * Comprehensive Fire Catch Probability & Sub-indices
-   */
-  static predictFromWeather({ temp, humidity, wind, rain, drought, forestType }) {
+  static predictFromWeather({ temp, humidity, forestType }) {
     const veg = VEGETATION_FACTORS[forestType] || VEGETATION_FACTORS.coniferous;
-    const droughtVal = parseInt(drought, 10) || 3;
-
-    // Derived FWI sub-indices
-    const estFFMC = this.estimateFFMC(temp, humidity, wind, rain);
-    const estISI = this.estimateISI(estFFMC, wind);
-    
-    // Duff Moisture Code (DMC) & Drought Code (DC) approximations
-    const estDMC = Math.max(2, (temp * 0.8) + (droughtVal * 16) - (rain * 2.2));
-    const estDC = Math.max(15, (droughtVal * 140) + (temp * 4.5) - (rain * 8.0));
-    
-    // Buildup Index (BUI)
-    const estBUI = (estDMC * estDC) / (estDMC + 0.4 * estDC + 0.01);
-    
-    // Composite Fire Weather Index (FWI)
-    let fwiB = estBUI > 80 ? (0.1 * estISI * (0.8 * estBUI / (estBUI + 50))) : (0.1 * estISI * (estBUI / 60));
-    let estFWI = Math.max(0.1, estISI * 0.65 + fwiB * 2.4);
-
-    // Fuel Moisture estimation (%)
-    const fuelMoisture = Math.max(3.0, (147.2 * (101.0 - estFFMC) / (59.5 + estFFMC)) * 0.16 + (humidity * 0.08) + (rain * 0.35));
-
-    // Multi-factor Logistic Ensemble Log-Odds (z)
-    // Calibrated against UCI Forest Fire + Algerian Forest Fire empirical distributions
+    // This score is illustrative, not a calibrated ignition probability.
     let z = -4.50; // intercept
     z += 0.135 * (temp - 20);                  // Warmth drives ignition
     z += 0.075 * (55 - humidity);              // Dry air drives ignition
-    z += 0.048 * (wind - 12);                  // Oxygen & ember carry
-    z -= 0.380 * Math.min(rain * 1.8, 15);     // Precipitation suppression
-    z += 0.520 * (droughtVal - 2.5);           // Deep dryness
     z *= veg.multiplier;                       // Vegetation flammability
 
-    // Sigmoid probability function
-    let prob = 1.0 / (1.0 + Math.exp(-z));
-    
-    // Clamp between realistic 1.2% and 99.1%
-    prob = Math.min(0.991, Math.max(0.012, prob)) * 100;
-
-    // Spread velocity estimate (meters/minute)
-    let spreadVelocity = Math.max(0.5, (estISI * 1.45 * veg.spreadBase * (1 + (wind / 40))));
+    const riskScore = Math.round((1 / (1 + Math.exp(-z))) * 1000) / 10;
 
     // Factor percentage contributions for UI bar chart
     let tScore = Math.max(5, (temp / 50) * 100);
     let hScore = Math.max(5, ((100 - humidity) / 100) * 100);
-    let wScore = Math.max(5, (wind / 80) * 100);
-    let rScore = Math.min(100, (rain / 20) * 100);
-
     return {
-      probability: Math.round(prob * 10) / 10,
-      fwi: Math.round(estFWI * 10) / 10,
-      isi: Math.round(estISI * 10) / 10,
-      ffmc: Math.round(estFFMC * 10) / 10,
-      dmc: Math.round(estDMC * 10) / 10,
-      dc: Math.round(estDC * 10) / 10,
-      fuelMoisture: Math.round(fuelMoisture * 10) / 10,
-      spreadVelocity: Math.round(spreadVelocity),
-      threat: this.classifyThreat(prob),
+      riskScore,
+      fwi: null,
+      isi: null,
+      ffmc: null,
+      dmc: null,
+      dc: null,
+      fuelMoisture: null,
+      spreadVelocity: null,
+      threat: this.classifyThreat(riskScore),
       factors: {
         temp: Math.round(tScore),
-        humidity: Math.round(hScore),
-        wind: Math.round(wScore),
-        rain: Math.round(rScore)
+        humidity: Math.round(hScore)
       }
     };
   }
@@ -203,11 +114,10 @@ class ForestFirePredictor {
   static predictFromFWI({ ffmc, dmc, dc, isi, forestType }) {
     const veg = VEGETATION_FACTORS[forestType] || VEGETATION_FACTORS.coniferous;
 
-    // Compute BUI & FWI
-    let bui = (0.8 * dmc * dc) / (dmc + 0.4 * dc + 0.001);
-    let fwi = Math.max(0.1, 0.1 * isi * (0.8 + bui / 50));
+    const bui = this.calculateBUI(dmc, dc);
+    const fwi = this.calculateFWI(isi, bui);
 
-    // Logistic probability based on FWI components
+    // An uncalibrated score, retained only for the qualitative display bands.
     let z = -5.0;
     z += 0.12 * (ffmc - 75);
     z += 0.02 * (dmc - 20);
@@ -215,104 +125,53 @@ class ForestFirePredictor {
     z += 0.18 * (isi - 5);
     z *= veg.multiplier;
 
-    let prob = 1.0 / (1.0 + Math.exp(-z));
-    prob = Math.min(0.991, Math.max(0.012, prob)) * 100;
-
-    let fuelMoisture = Math.max(3.0, (147.2 * (101.0 - ffmc) / (59.5 + ffmc)) * 0.18);
-    let spreadVelocity = Math.max(0.5, (isi * 1.5 * veg.spreadBase));
+    const riskScore = Math.round((1 / (1 + Math.exp(-z))) * 1000) / 10;
 
     return {
-      probability: Math.round(prob * 10) / 10,
+      riskScore,
       fwi: Math.round(fwi * 10) / 10,
       isi: Math.round(isi * 10) / 10,
       ffmc: Math.round(ffmc * 10) / 10,
       dmc: Math.round(dmc * 10) / 10,
       dc: Math.round(dc * 10) / 10,
-      fuelMoisture: Math.round(fuelMoisture * 10) / 10,
-      spreadVelocity: Math.round(spreadVelocity),
-      threat: this.classifyThreat(prob),
+      fuelMoisture: null,
+      spreadVelocity: null,
+      threat: this.classifyThreat(riskScore),
       factors: {
         temp: Math.min(100, Math.round((ffmc / 100) * 90)),
-        humidity: Math.min(100, Math.round((101 - ffmc) * 2.5)),
-        wind: Math.min(100, Math.round(isi * 3)),
-        rain: Math.max(0, Math.round(100 - ffmc))
+        humidity: Math.min(100, Math.round((101 - ffmc) * 2.5))
       }
     };
   }
 
-  /**
-   * Determine categorical threat tier & UI attributes
-   */
-  static classifyThreat(prob) {
-    if (prob < 25.0) {
-      return {
-        level: 'LOW',
-        className: 'threat-low',
-        color: '#10b981',
-        title: 'LOW FIRE DANGER',
-        summary: 'Moisture in vegetation suppresses ignition. Creeping surface fire possible only with direct flame contact. Readily contained by standard patrols.',
-        icon: '🛡️',
-        fwiText: 'Minimal Hazard',
-        moistureText: 'High Moisture Content',
-        advisories: [
-          'Routine forest management activities and controlled burning permitted within safety guidelines.',
-          'Maintain regular fire tower surveillance and weather station logging.',
-          'Standard recreational campfires permitted in designated ring fire pits.',
-          'Ensure fire access roads and water refilling hydrants remain unobstructed.'
-        ]
-      };
-    } else if (prob < 50.0) {
-      return {
-        level: 'MODERATE',
-        className: 'threat-moderate',
-        color: '#f59e0b',
-        title: 'MODERATE FIRE DANGER',
-        summary: 'Surface fires will ignite from unattended campfires or sparks. Moderately active flame spread in open areas. Ground crews can control with hand tools.',
-        icon: '⚠️',
-        fwiText: 'Moderate Risk',
-        moistureText: 'Medium Fuel Moisture',
-        advisories: [
-          'Restrict agricultural burning to early morning hours before thermal peak.',
-          'Issue campfire warnings at public park trailheads and recreation sites.',
-          'Ground patrol units placed on standby with portable water pump apparatus.',
-          'Inspect spark arrestors on chainsaws, timber harvesters, and off-road vehicles.'
-        ]
-      };
-    } else if (prob < 75.0) {
-      return {
-        level: 'HIGH',
-        className: 'threat-high',
-        color: '#ff7528',
-        title: 'HIGH FIRE DANGER',
-        summary: 'Fine fuels ignite readily from any spark, match, or exhaust heat. Vigorous surface fires with occasional single tree torching. Fire suppression is challenging.',
-        icon: '🔥',
-        fwiText: 'High Spread Index',
-        moistureText: 'Dry & Vulnerable',
-        advisories: [
-          'Strict campfire and debris burning ban in effect across all forest parcels.',
-          'Halt industrial forestry operations during peak afternoon dry hours (12 PM - 5 PM).',
-          'Pre-position initial attack strike teams and bulldozer units at strategic trailheads.',
-          'Activate aerial spotter flights or drone sweeps over vulnerable leeward slopes.'
-        ]
-      };
-    } else {
-      return {
-        level: 'EXTREME',
-        className: 'threat-extreme',
-        color: '#ff334b',
-        title: 'EXTREME / CRITICAL DANGER',
-        summary: 'Explosive ignition potential. Fires will crown and exhibit rapid rate of spread with long-range spotting. Direct control at flame front is virtually impossible without heavy air tankers.',
-        icon: '🚨',
-        fwiText: 'Critical Crown Fire Risk',
-        moistureText: 'Critically Desiccated',
-        advisories: [
-          'Total Fire Ban: Absolute prohibition of any outdoor open flame or hot-work cutting.',
-          'Immediate closure of high-risk backcountry trails and public camping zones.',
-          'Full mobilization of aerial fire tankers and wildland-urban interface (WUI) protection units.',
-          'Issue pre-evacuation alert status to vulnerable adjacent communities and wildlife reserves.'
-        ]
-      };
+  static calculateBUI(dmc, dc) {
+    if (dmc <= 0.4 * dc) {
+      return (0.8 * dmc * dc) / (dmc + 0.4 * dc);
     }
+    return dmc - (1 - (0.8 * dc) / (dmc + 0.4 * dc)) * (0.92 + Math.pow(0.0114 * dmc, 1.7));
+  }
+
+  static calculateFWI(isi, bui) {
+    const fD = bui <= 80
+      ? 0.626 * Math.pow(bui, 0.809) + 2
+      : 1000 / (25 + 108.64 * Math.exp(-0.023 * bui));
+    const b = 0.1 * isi * fD;
+    if (b <= 1) return b;
+    return Math.exp(2.72 * Math.pow(0.434 * Math.log(b), 0.647));
+  }
+
+  /** These score bands are illustrative and are not official danger classes. */
+  static classifyThreat(score) {
+    if (score < 25) {
+      return { level: 'LOW SCORE', className: 'threat-low', color: '#10b981', title: 'LOW RELATIVE SCORE', icon: 'ℹ️' };
+    }
+    if (score < 50) {
+      return { level: 'MODERATE SCORE', className: 'threat-moderate', color: '#f59e0b', title: 'MODERATE RELATIVE SCORE', icon: 'ℹ️' };
+    }
+    if (score < 75) {
+      return { level: 'HIGH SCORE', className: 'threat-high', color: '#ff7528', title: 'HIGH RELATIVE SCORE', icon: 'ℹ️' };
+    }
+    return { level: 'VERY HIGH SCORE', className: 'threat-extreme', color: '#ff334b', title: 'VERY HIGH RELATIVE SCORE', icon: 'ℹ️' };
   }
 }
 
@@ -358,17 +217,6 @@ class PyroWatchApp {
     this.humiditySlider = document.getElementById('humiditySlider');
     this.humidityInput = document.getElementById('humidityInput');
     this.humidityBadge = document.getElementById('humidityBadge');
-
-    this.windSlider = document.getElementById('windSlider');
-    this.windInput = document.getElementById('windInput');
-    this.windBadge = document.getElementById('windBadge');
-
-    this.rainSlider = document.getElementById('rainSlider');
-    this.rainInput = document.getElementById('rainInput');
-    this.rainBadge = document.getElementById('rainBadge');
-
-    this.droughtSlider = document.getElementById('droughtSlider');
-    this.droughtBadge = document.getElementById('droughtBadge');
 
     // Advanced Inputs
     this.ffmcSlider = document.getElementById('ffmcSlider');
@@ -416,11 +264,6 @@ class PyroWatchApp {
     this.factorTempText = document.getElementById('factorTempText');
     this.factorHumidityBar = document.getElementById('factorHumidityBar');
     this.factorHumidityText = document.getElementById('factorHumidityText');
-    this.factorWindBar = document.getElementById('factorWindBar');
-    this.factorWindText = document.getElementById('factorWindText');
-    this.factorRainBar = document.getElementById('factorRainBar');
-    this.factorRainText = document.getElementById('factorRainText');
-
     // Advisory
     this.advisoryIcon = document.getElementById('advisoryIcon');
     this.advisoryTitle = document.getElementById('advisoryTitle');
@@ -457,20 +300,6 @@ class PyroWatchApp {
 
     this.bindSliderNumberPair(this.humiditySlider, this.humidityInput, (val) => {
       this.humidityBadge.textContent = `${parseInt(val, 10)} %`;
-    });
-
-    this.bindSliderNumberPair(this.windSlider, this.windInput, (val) => {
-      this.windBadge.textContent = `${parseInt(val, 10)} km/h`;
-    });
-
-    this.bindSliderNumberPair(this.rainSlider, this.rainInput, (val) => {
-      this.rainBadge.textContent = `${parseFloat(val).toFixed(1)} mm`;
-    });
-
-    this.droughtSlider.addEventListener('input', (e) => {
-      const v = parseInt(e.target.value, 10);
-      this.droughtBadge.textContent = DROUGHT_LABELS[v] || `${v}`;
-      this.onInputChange();
     });
 
     this.forestTypeSelect.addEventListener('change', (e) => {
@@ -594,9 +423,6 @@ class PyroWatchApp {
   syncAllInputs() {
     this.tempBadge.textContent = `${parseFloat(this.tempSlider.value).toFixed(1)} °C`;
     this.humidityBadge.textContent = `${this.humiditySlider.value} %`;
-    this.windBadge.textContent = `${this.windSlider.value} km/h`;
-    this.rainBadge.textContent = `${parseFloat(this.rainSlider.value).toFixed(1)} mm`;
-    this.droughtBadge.textContent = DROUGHT_LABELS[this.droughtSlider.value] || 'Parched';
   }
 
   setMode(mode) {
@@ -644,17 +470,6 @@ class PyroWatchApp {
     this.humidityInput.value = p.humidity;
     this.humidityBadge.textContent = `${p.humidity} %`;
 
-    this.windSlider.value = p.wind;
-    this.windInput.value = p.wind;
-    this.windBadge.textContent = `${p.wind} km/h`;
-
-    this.rainSlider.value = p.rain;
-    this.rainInput.value = p.rain;
-    this.rainBadge.textContent = `${p.rain} mm`;
-
-    this.droughtSlider.value = p.drought;
-    this.droughtBadge.textContent = DROUGHT_LABELS[p.drought];
-
     if (p.forestType) {
       this.forestTypeSelect.value = p.forestType;
       this.forestTypeHint.textContent = VEGETATION_FACTORS[p.forestType].hint;
@@ -695,9 +510,6 @@ class PyroWatchApp {
       result = ForestFirePredictor.predictFromWeather({
         temp: parseFloat(this.tempSlider.value),
         humidity: parseFloat(this.humiditySlider.value),
-        wind: parseFloat(this.windSlider.value),
-        rain: parseFloat(this.rainSlider.value),
-        drought: parseInt(this.droughtSlider.value, 10),
         forestType: this.forestTypeSelect.value
       });
 
@@ -733,17 +545,17 @@ class PyroWatchApp {
 
   renderResults(res) {
     // 1. Digital Readout
-    this.probValueDisplay.textContent = res.probability.toFixed(1);
+    this.probValueDisplay.textContent = res.riskScore.toFixed(1);
 
     // 2. Animated SVG Gauge Needle & Arc
     // Arc radius = 108. Arc length = pi * 108 = 339.29
     const maxOffset = 339.3;
-    const currentOffset = maxOffset - (res.probability / 100) * maxOffset;
+    const currentOffset = maxOffset - (res.riskScore / 100) * maxOffset;
     this.gaugeProgressArc.style.strokeDashoffset = currentOffset;
     this.gaugeProgressArc.style.stroke = res.threat.color;
 
-    // Needle Angle: from -90 deg (0%) to +90 deg (100%)
-    const needleAngle = -90 + (res.probability / 100) * 180;
+    // Needle angle: from -90 (0 points) to +90 (100 points).
+    const needleAngle = -90 + (res.riskScore / 100) * 180;
     this.gaugeNeedleGroup.setAttribute('transform', `translate(140, 140) rotate(${needleAngle})`);
 
     const needleCenter = document.getElementById('gaugeNeedleCenter');
@@ -754,34 +566,30 @@ class PyroWatchApp {
     // 3. Danger Level Badge
     this.threatLevelBadge.className = `threat-badge ${res.threat.className}`;
     this.threatLevelText.textContent = res.threat.title;
-    this.threatSummaryText.textContent = res.threat.summary;
+    this.threatSummaryText.textContent = `${res.threat.level} app-defined band. This is an illustrative score, not a calibrated probability or operational fire forecast.`;
 
     // 4. Metrics Grid
-    this.metricFwiVal.textContent = res.fwi.toFixed(1);
-    this.metricFwiDesc.textContent = res.threat.fwiText;
-    this.metricIsiVal.textContent = res.isi.toFixed(1);
-    this.metricMoistureVal.textContent = `${res.fuelMoisture.toFixed(1)}%`;
-    this.metricVelocityVal.textContent = `${res.spreadVelocity} m/min`;
+    this.metricFwiVal.textContent = res.fwi === null ? 'N/A' : res.fwi.toFixed(1);
+    this.metricFwiDesc.textContent = res.fwi === null ? 'Requires valid FWI inputs' : 'Calculated from entered FWI codes';
+    this.metricIsiVal.textContent = res.isi === null ? 'N/A' : res.isi.toFixed(1);
+    this.metricMoistureVal.textContent = res.fuelMoisture === null ? 'N/A' : `${res.fuelMoisture.toFixed(1)}%`;
+    this.metricVelocityVal.textContent = res.spreadVelocity === null ? 'N/A' : 'Not calculated';
 
     // 5. Critical Factor Bars
     this.factorTempBar.style.width = `${res.factors.temp}%`;
-    this.factorTempText.textContent = `${res.factors.temp}% Heat Impact`;
+    this.factorTempText.textContent = `Temperature input indicator: ${res.factors.temp}/100`;
 
     this.factorHumidityBar.style.width = `${res.factors.humidity}%`;
-    this.factorHumidityText.textContent = `${res.factors.humidity}% Aridity Impact`;
-
-    this.factorWindBar.style.width = `${res.factors.wind}%`;
-    this.factorWindText.textContent = `${res.factors.wind}% Wind Convection`;
-
-    this.factorRainBar.style.width = `${res.factors.rain}%`;
-    this.factorRainText.textContent = `${res.factors.rain}% Rain Dampening`;
+    this.factorHumidityText.textContent = `Humidity input indicator: ${res.factors.humidity}/100`;
 
     // 6. Actionable Advisory
     this.advisoryIcon.textContent = res.threat.icon;
-    this.advisoryTitle.textContent = `${res.threat.level} Level Actionable Advisory`;
-    this.advisoryList.innerHTML = res.threat.advisories
-      .map(item => `<li>${item}</li>`)
-      .join('');
+    this.advisoryIcon.textContent = 'ℹ️';
+    this.advisoryTitle.textContent = 'How to interpret this result';
+    this.advisoryList.innerHTML = [
+      '<li>The 0–100 score is illustrative and has not been calibrated against observed fire events.</li>',
+      '<li>For real-world conditions, consult the relevant fire authority and validated local fire-danger information.</li>'
+    ].join('');
 
     // 7. Timestamp
     const now = new Date();
@@ -818,10 +626,7 @@ class PyroWatchApp {
       vegetation: VEGETATION_FACTORS[this.forestTypeSelect.value].name,
       temp: parseFloat(this.tempSlider.value),
       humidity: parseInt(this.humiditySlider.value, 10),
-      wind: parseInt(this.windSlider.value, 10),
-      rain: parseFloat(this.rainSlider.value),
-      drought: this.droughtSlider.value,
-      probability: this.currentResults.probability,
+      riskScore: this.currentResults.riskScore,
       threat: this.currentResults.threat.level,
       threatColor: this.currentResults.threat.color
     };
@@ -848,10 +653,7 @@ class PyroWatchApp {
         <td>${item.vegetation}</td>
         <td>${item.temp}°C</td>
         <td>${item.humidity}%</td>
-        <td>${item.wind} km/h</td>
-        <td>${item.rain} mm</td>
-        <td>Lvl ${item.drought}</td>
-        <td><strong style="color: ${item.threatColor}">${item.probability.toFixed(1)}%</strong></td>
+        <td><strong style="color: ${item.threatColor}">${item.riskScore == null ? 'Legacy value—not comparable' : item.riskScore.toFixed(1)}</strong></td>
         <td><span class="cell-pill" style="background: ${item.threatColor}22; color: ${item.threatColor}; border: 1px solid ${item.threatColor}55;">${item.threat}</span></td>
         <td><button class="btn-link" onclick="window.app.deleteHistoryItem(${item.id})">Delete</button></td>
       </tr>
@@ -878,16 +680,13 @@ class PyroWatchApp {
       return;
     }
 
-    const headers = ['Timestamp', 'Vegetation', 'Temperature_C', 'Humidity_pct', 'Wind_kmh', 'Rain_mm', 'Drought_Level', 'Fire_Probability_pct', 'Threat_Level'];
+    const headers = ['Timestamp', 'Vegetation', 'Temperature_C', 'Humidity_pct', 'Illustrative_Risk_Score_0_to_100', 'Threat_Level'];
     const rows = this.historyList.map(h => [
       h.timestamp,
       `"${h.vegetation}"`,
       h.temp,
       h.humidity,
-      h.wind,
-      h.rain,
-      h.drought,
-      h.probability,
+      h.riskScore ?? 'Legacy value—not comparable',
       h.threat
     ]);
 
@@ -901,15 +700,15 @@ class PyroWatchApp {
 
   downloadSampleCSV() {
     const sampleRows = [
-      'forest_type,temp,humidity,wind,rain,drought',
-      'coniferous,41.2,15,36,0.0,5',
-      'shrubland,33.5,24,48,0.0,4',
-      'mixed,27.0,46,18,0.5,3',
-      'deciduous,18.0,85,12,14.0,1',
-      'coniferous,37.5,18,22,0.0,5',
-      'grassland,32.0,28,42,0.0,4',
-      'mixed,22.0,62,14,2.5,2',
-      'coniferous,29.0,38,20,0.0,3'
+      'forest_type,temp,humidity',
+      'coniferous,41.2,15',
+      'shrubland,33.5,24',
+      'mixed,27.0,46',
+      'deciduous,18.0,85',
+      'coniferous,37.5,18',
+      'grassland,32.0,28',
+      'mixed,22.0,62',
+      'coniferous,29.0,38'
     ].join('\n');
 
     this.triggerDownload(sampleRows, 'sample_forest_fire_data.csv', 'text/csv');
@@ -977,9 +776,6 @@ class PyroWatchApp {
     const getIndex = (aliases) => headers.findIndex(h => aliases.some(a => h.includes(a)));
     const tempIdx = getIndex(['temp', 'temperature']);
     const rhIdx = getIndex(['humidity', 'rh']);
-    const windIdx = getIndex(['wind', 'ws']);
-    const rainIdx = getIndex(['rain', 'precip']);
-    const droughtIdx = getIndex(['drought', 'dryness', 'dc']);
     const typeIdx = getIndex(['type', 'forest', 'veg']);
 
     if (tempIdx === -1 || rhIdx === -1) {
@@ -994,31 +790,23 @@ class PyroWatchApp {
 
       const temp = parseFloat(cols[tempIdx]) || 25.0;
       const humidity = parseFloat(cols[rhIdx]) || 50.0;
-      const wind = windIdx !== -1 ? (parseFloat(cols[windIdx]) || 15.0) : 15.0;
-      const rain = rainIdx !== -1 ? (parseFloat(cols[rainIdx]) || 0.0) : 0.0;
-      const drought = droughtIdx !== -1 ? (parseInt(cols[droughtIdx], 10) || 3) : 3;
       const forestType = typeIdx !== -1 ? (cols[typeIdx] || 'coniferous') : 'coniferous';
 
       const prediction = ForestFirePredictor.predictFromWeather({
-        temp, humidity, wind, rain, drought, forestType
+        temp, humidity, forestType
       });
 
       // Primary Hazard Identification
       let hazard = 'Normal';
       if (temp > 35 && humidity < 25) hazard = 'High Heat & Low Humidity';
-      else if (wind > 40) hazard = 'Extreme Wind Convection';
-      else if (drought >= 4) hazard = 'Deep Soil Drought';
-      else if (rain > 10) hazard = 'Rain Dampening';
+      else if (humidity < 30) hazard = 'Low Humidity';
 
       this.batchData.push({
         row: i,
         forestType,
         temp,
         humidity,
-        wind,
-        rain,
-        drought,
-        probability: prediction.probability,
+        riskScore: prediction.riskScore,
         threat: prediction.threat.level,
         threatColor: prediction.threat.color,
         hazard
@@ -1030,18 +818,15 @@ class PyroWatchApp {
   }
 
   displayBatchModal() {
-    const highRiskCount = this.batchData.filter(d => d.probability >= 50).length;
-    this.batchSummaryStats.textContent = `Analyzed ${this.batchData.length} forest parcels: ${highRiskCount} classified as HIGH / EXTREME danger.`;
+    this.batchSummaryStats.textContent = `Analyzed ${this.batchData.length} records. Scores are illustrative, not calibrated probabilities.`;
 
     this.batchTableBody.innerHTML = this.batchData.map(d => `
-      <tr class="${d.probability >= 75 ? 'high-risk' : ''}">
+      <tr class="${d.riskScore >= 75 ? 'high-risk' : ''}">
         <td>#${d.row}</td>
         <td>${d.forestType}</td>
         <td>${d.temp}°C</td>
         <td>${d.humidity}%</td>
-        <td>${d.wind} km/h</td>
-        <td>${d.rain} mm</td>
-        <td><strong style="color: ${d.threatColor}">${d.probability.toFixed(1)}%</strong></td>
+        <td><strong style="color: ${d.threatColor}">${d.riskScore.toFixed(1)}</strong></td>
         <td><span class="cell-pill" style="background: ${d.threatColor}22; color: ${d.threatColor}; border: 1px solid ${d.threatColor}55;">${d.threat}</span></td>
         <td>${d.hazard}</td>
       </tr>
@@ -1057,22 +842,19 @@ class PyroWatchApp {
   exportBatchCSV() {
     if (this.batchData.length === 0) return;
 
-    const headers = ['Row', 'Forest_Type', 'Temperature_C', 'Humidity_pct', 'Wind_kmh', 'Rain_mm', 'Drought_Level', 'Fire_Probability_pct', 'Threat_Level', 'Primary_Hazard'];
+    const headers = ['Row', 'Forest_Type', 'Temperature_C', 'Humidity_pct', 'Illustrative_Risk_Score_0_to_100', 'Threat_Level', 'Primary_Hazard'];
     const rows = this.batchData.map(d => [
       d.row,
       `"${d.forestType}"`,
       d.temp,
       d.humidity,
-      d.wind,
-      d.rain,
-      d.drought,
-      d.probability,
+      d.riskScore,
       d.threat,
       `"${d.hazard}"`
     ]);
 
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    this.triggerDownload(csvContent, 'evaluated_forest_fire_probabilities.csv', 'text/csv');
+    this.triggerDownload(csvContent, 'evaluated_forest_fire_risk_scores.csv', 'text/csv');
   }
 
   triggerDownload(content, filename, mimeType) {
